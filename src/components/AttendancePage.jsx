@@ -211,18 +211,18 @@ function AttendancePage() {
           </div>
         </aside>
 
-        <main className="overflow-auto pb-5 print:overflow-visible print:pb-0">
+        <main className="overflow-auto pb-5 print:overflow-visible print:pb-0 print:block">
           <div className="flex justify-start xl:justify-center print:block">
-            <section className="w-[297mm] min-h-[210mm] rounded-[20px] bg-white p-[8mm] text-slate-900 shadow-2xl shadow-sky-900/15 print:w-full print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
+            <section className="w-[297mm] min-h-[210mm] rounded-[20px] bg-white p-[8mm] text-slate-900 shadow-2xl shadow-sky-900/15 print:w-full print:min-h-0 print:h-auto print:rounded-none print:p-0 print:shadow-none print:overflow-visible">
               <SheetHeader
                 header={header}
                 monthLabel={MONTHS[header.month - 1]}
                 year={header.year}
               />
 
-              <div className="overflow-x-auto rounded-xl border-2 border-cyan-900 print:overflow-visible">
-                <table className="w-full table-fixed border-collapse">
-                  <thead>
+              <div className="overflow-x-auto rounded-xl border-2 border-cyan-900 print:overflow-visible print:overflow-x-visible print:rounded-none print:border-0">
+                <table className="attendance-print-table w-full table-fixed border-collapse print:w-full">
+                  <thead style={{ display: "table-header-group" }}>
                     <tr>
                       <th className="w-[30%] border border-cyan-900 bg-cyan-100 px-1.5 py-1 text-left text-[10px] font-bold text-cyan-900 print:px-1 print:py-0.5 print:text-[9px]">
                         Nome do aluno
@@ -260,7 +260,10 @@ function AttendancePage() {
                   <tbody>
                     {students.length > 0
                       ? students.map((student) => (
-                          <tr key={student.id}>
+                          <tr
+                            key={student.id}
+                            className="print:break-inside-avoid"
+                          >
                             <td
                               className="w-[30%] truncate border border-cyan-900 px-1.5 py-1 text-left text-[10px] font-bold print:px-1 print:py-0.5 print:text-[9px]"
                               title={student.fullName}
@@ -284,8 +287,11 @@ function AttendancePage() {
                             })}
                           </tr>
                         ))
-                      : Array.from({ length: 12 }).map((_, rowIndex) => (
-                          <tr key={`empty-${rowIndex}`}>
+                      : Array.from({ length: 1 }).map((_, rowIndex) => (
+                          <tr
+                            key={`empty-${rowIndex}`}
+                            className="print:break-inside-avoid"
+                          >
                             <td className="w-[30%] border border-cyan-900 px-1.5 py-1 text-left text-[10px] font-bold print:px-1 print:py-0.5 print:text-[9px]">
                               &nbsp;
                             </td>

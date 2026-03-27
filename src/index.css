@@ -3,9 +3,69 @@
 @tailwind utilities;
 
 @media print {
-	html,
-	body {
-		margin: 0;
-		overflow: visible;
-	}
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    width: 100%;
+    height: auto;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  .attendance-print-table {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .attendance-print-table thead {
+    display: table-header-group;
+  }
+
+  .attendance-print-table tbody {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .attendance-print-table tr {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-sizing: border-box;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  td,
+  th {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .attendance-print-table {
+    width: 100% !important;
+    table-layout: fixed;
+  }
 }
