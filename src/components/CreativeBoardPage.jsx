@@ -1,11 +1,11 @@
+/* eslint-disable no-unused-vars */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ImagePlus,
   Type,
   Trash2,
   Printer,
-  Sparkles,
-  School,
+  Eraser,
   Bold,
   Italic,
   Underline,
@@ -13,14 +13,24 @@ import {
   AlignCenter,
   AlignRight,
   AlignJustify,
+  LayoutTemplate,
+  School,
+  Square,
+  Circle,
+  Triangle,
+  Star,
+  Heart,
+  Minus,
 } from "lucide-react";
 import SheetHeader from "./SheetHeader";
 import HeaderConfigPanel from "./HeaderConfigPanel";
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const MONTHS = [
   "Janeiro",
   "Fevereiro",
-  "Marco",
+  "Março",
   "Abril",
   "Maio",
   "Junho",
@@ -47,8 +57,97 @@ const INITIAL_HEADER = {
   notes: "",
 };
 
-const fieldClassName =
-  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
+const FONT_FAMILIES = [
+  "Arial",
+  "Verdana",
+  "Georgia",
+  "Times New Roman",
+  "Trebuchet MS",
+  "Comic Sans MS",
+];
+
+// shape → CSS clip-path or border-radius
+const SHAPE_STYLES = {
+  rectangle: { borderRadius: "4px" },
+  circle: { borderRadius: "50%" },
+  triangle: {
+    clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)",
+    borderRadius: "0",
+  },
+  star: {
+    clipPath:
+      "polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)",
+    borderRadius: "0",
+  },
+  heart: {
+    clipPath: "polygon(25% 0%,75% 0%,100% 25%,100% 50%,50% 100%,0% 50%,0% 25%)",
+    borderRadius: "0",
+  },
+  diamond: {
+    clipPath: "polygon(50% 0%,100% 50%,50% 100%,0% 50%)",
+    borderRadius: "0",
+  },
+  line: { borderRadius: "4px" },
+};
+
+const SHAPE_PRESETS = [
+  { key: "rectangle", label: "Quadrado", Icon: Square, defaultH: 80 },
+  { key: "circle", label: "Círculo", Icon: Circle, defaultH: 80 },
+  { key: "triangle", label: "Triângulo", Icon: Triangle, defaultH: 80 },
+  { key: "star", label: "Estrela", Icon: Star, defaultH: 80 },
+  { key: "heart", label: "Coração", Icon: Heart, defaultH: 80 },
+  { key: "diamond", label: "Losango", Icon: Square, defaultH: 80 },
+  { key: "line", label: "Linha", Icon: Minus, defaultH: 6 },
+];
+
+const BORDER_PRESETS = [
+  { key: "none", label: "Sem borda" },
+  { key: "simple", label: "Simples" },
+  { key: "double", label: "Dupla" },
+  { key: "dashed", label: "Tracejada" },
+  { key: "dotted", label: "Pontilhada" },
+];
+
+const BACKGROUND_PRESETS = [
+  { key: "white", label: "Branco", style: { background: "#ffffff" } },
+  {
+    key: "lined",
+    label: "Pautado",
+    style: {
+      backgroundImage:
+        "repeating-linear-gradient(transparent, transparent 27px, #cbd5e1 27px, #cbd5e1 28px)",
+      backgroundSize: "100% 28px",
+    },
+  },
+  {
+    key: "grid",
+    label: "Quadriculado",
+    style: {
+      backgroundImage:
+        "linear-gradient(#e2e8f0 1px, transparent 1px), linear-gradient(90deg, #e2e8f0 1px, transparent 1px)",
+      backgroundSize: "20px 20px",
+    },
+  },
+  {
+    key: "dots",
+    label: "Pontilhado",
+    style: {
+      backgroundImage: "radial-gradient(circle, #94a3b8 1px, transparent 1px)",
+      backgroundSize: "20px 20px",
+    },
+  },
+  {
+    key: "pastel",
+    label: "Pastel",
+    style: {
+      background:
+        "linear-gradient(135deg, #fdf4ff 0%, #eff6ff 50%, #f0fdf4 100%)",
+    },
+  },
+  { key: "yellow", label: "Amarelo", style: { background: "#fefce8" } },
+];
+
+// ─── Factories ────────────────────────────────────────────────────────────────
 
 const createTextItem = () => ({
   id: crypto.randomUUID(),
@@ -80,52 +179,167 @@ const createImageItem = (src) => ({
   src,
 });
 
+const createShapeItem = (shape) => ({
+  id: crypto.randomUUID(),
+  type: "shape",
+  shape,
+  x: 60,
+  y: 60,
+  w: 80,
+  h: SHAPE_PRESETS.find((s) => s.key === shape)?.defaultH ?? 80,
+  fillColor: "#e2e8f0",
+  strokeColor: "#64748b",
+  strokeWidth: 2,
+  opacity: 1,
+});
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+const fieldCls =
+  "w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-1 focus:ring-slate-400";
+
+const ToggleButton = ({ active, onClick, children, title }) => (
+  <button
+    type="button"
+    title={title}
+    onClick={onClick}
+    className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-semibold transition-colors ${
+      active
+        ? "border-slate-700 bg-slate-900 text-white"
+        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+    }`}
+  >
+    {children}
+  </button>
+);
+
+const SliderRow = ({ label, min, max, step = 1, value, onChange, display }) => (
+  <div className="flex items-center gap-2">
+    <label className="w-24 shrink-0 text-xs font-medium text-slate-600">
+      {label}
+    </label>
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={onChange}
+      className="flex-1"
+    />
+    <span className="w-10 text-right text-xs font-bold text-slate-700">
+      {display}
+    </span>
+  </div>
+);
+
+const SectionBox = ({ title, children }) => (
+  <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-3">
+    <p className="text-xs font-semibold text-slate-700">{title}</p>
+    {children}
+  </div>
+);
+
+// ─── Shape renderer (pure CSS, no SVG needed) ─────────────────────────────────
+
+const ShapeRenderer = ({ item }) => (
+  <div
+    className="h-full w-full"
+    style={{
+      ...SHAPE_STYLES[item.shape],
+      backgroundColor: item.fillColor,
+      border:
+        item.strokeWidth > 0
+          ? `${item.strokeWidth}px solid ${item.strokeColor}`
+          : "none",
+      opacity: item.opacity,
+      boxSizing: "border-box",
+    }}
+  />
+);
+
+// ─── Border renderer ──────────────────────────────────────────────────────────
+
+const getBorderStyle = (preset, color, width) => {
+  if (preset === "none") return {};
+  if (preset === "stars") {
+    // emoji border via outline trick — rendered as inner padding pattern
+    return {
+      outline: `${width}px solid ${color}`,
+      outlineOffset: `-${width}px`,
+    };
+  }
+  const styleMap = {
+    simple: "solid",
+    double: "double",
+    dashed: "dashed",
+    dotted: "dotted",
+  };
+  return { border: `${width}px ${styleMap[preset] ?? "solid"} ${color}` };
+};
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 function CreativeBoardPage() {
   const [header, setHeader] = useState(INITIAL_HEADER);
   const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [imageError, setImageError] = useState("");
+
+  // Board appearance
+  const [boardBg, setBoardBg] = useState("white");
+  const [borderPreset, setBorderPreset] = useState("none");
+  const [borderColor, setBorderColor] = useState("#64748b");
+  const [borderWidth, setBorderWidth] = useState(8);
+
   const boardRef = useRef(null);
   const dragRef = useRef(null);
   const resizeRef = useRef(null);
 
   const selectedItem = useMemo(
-    () => items.find((item) => item.id === selectedId) || null,
-    [items, selectedId]
+    () => items.find((i) => i.id === selectedId) ?? null,
+    [items, selectedId],
   );
 
-  const textStylePreset = selectedItem?.type === "text"
-    ? {
-        color: selectedItem.color || "#0f172a",
-        fontWeight: selectedItem.fontWeight || "400",
-        fontStyle: selectedItem.fontStyle || "normal",
-        textDecoration: selectedItem.textDecoration || "none",
-        textAlign: selectedItem.textAlign || "left",
-        fontFamily: selectedItem.fontFamily || "Arial",
-        lineHeight: selectedItem.lineHeight || 1.35,
-        letterSpacing: selectedItem.letterSpacing || 0,
-        textIndent: selectedItem.textIndent || 0,
-      }
-    : null;
+  const handleHeaderChange = useCallback((key, value) => {
+    setHeader((prev) => ({ ...prev, [key]: value }));
+  }, []);
 
-  const handleHeaderChange = (key, value) => {
-    setHeader((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  };
-
-  const clampToBoard = useCallback((nextItem) => {
-    if (!boardRef.current) return nextItem;
-
-    const maxX = boardRef.current.clientWidth - nextItem.w;
-    const maxY = boardRef.current.clientHeight - nextItem.h;
-
+  const clampToBoard = useCallback((next) => {
+    if (!boardRef.current) return next;
+    const maxX = boardRef.current.clientWidth - next.w;
+    const maxY = boardRef.current.clientHeight - next.h;
     return {
-      ...nextItem,
-      x: Math.max(0, Math.min(nextItem.x, maxX)),
-      y: Math.max(0, Math.min(nextItem.y, maxY)),
+      ...next,
+      x: Math.max(0, Math.min(next.x, maxX)),
+      y: Math.max(0, Math.min(next.y, maxY)),
     };
+  }, []);
+
+  const updateItem = useCallback(
+    (id, patch) => {
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === id ? clampToBoard({ ...item, ...patch }) : item,
+        ),
+      );
+    },
+    [clampToBoard],
+  );
+
+  const addImageFromFile = useCallback((file) => {
+    if (!file.type.startsWith("image/")) {
+      setImageError("Escolha um arquivo de imagem válido.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = createImageItem(String(reader.result ?? ""));
+      setItems((prev) => [...prev, img]);
+      setSelectedId(img.id);
+      setImageError("");
+    };
+    reader.readAsDataURL(file);
   }, []);
 
   const handleAddText = () => {
@@ -134,101 +348,98 @@ function CreativeBoardPage() {
     setSelectedId(item.id);
   };
 
-  const addImageFromFile = (file) => {
-    if (!file.type.startsWith("image/")) {
-      setImageError("Escolha um arquivo de imagem valido.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const imageItem = createImageItem(String(reader.result || ""));
-      setItems((prev) => [...prev, imageItem]);
-      setSelectedId(imageItem.id);
-      setImageError("");
-    };
-    reader.readAsDataURL(file);
+  const handleAddShape = (shape) => {
+    const item = createShapeItem(shape);
+    setItems((prev) => [...prev, item]);
+    setSelectedId(item.id);
   };
 
-  const handleUploadImage = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    addImageFromFile(file);
-    event.target.value = "";
+  const handleUploadImage = (e) => {
+    const file = e.target.files?.[0];
+    if (file) addImageFromFile(file);
+    e.target.value = "";
   };
 
   const handleDeleteSelected = () => {
     if (!selectedId) return;
-    setItems((prev) => prev.filter((item) => item.id !== selectedId));
+    setItems((prev) => prev.filter((i) => i.id !== selectedId));
     setSelectedId(null);
   };
 
-  const updateItem = useCallback((id, patch) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? clampToBoard({ ...item, ...patch }) : item))
+  const handleClear = () => {
+    setItems([]);
+    setSelectedId(null);
+    setHeader(INITIAL_HEADER);
+    setBoardBg("white");
+    setBorderPreset("none");
+  };
+
+  const handlePrint = async () => {
+    const imgs = boardRef.current
+      ? Array.from(boardRef.current.querySelectorAll("img"))
+      : [];
+    await Promise.all(
+      imgs.map((img) =>
+        img.complete
+          ? Promise.resolve()
+          : new Promise((res) => {
+              img.addEventListener("load", res, { once: true });
+              img.addEventListener("error", res, { once: true });
+            }),
+      ),
     );
-  }, [clampToBoard]);
+    window.print();
+  };
 
-  const startDrag = (event, item) => {
-    event.preventDefault();
+  const startDrag = (e, item) => {
+    e.preventDefault();
     setSelectedId(item.id);
-
-    const boardRect = boardRef.current?.getBoundingClientRect();
-    if (!boardRect) return;
-
+    const rect = boardRef.current?.getBoundingClientRect();
+    if (!rect) return;
     dragRef.current = {
       id: item.id,
-      offsetX: event.clientX - boardRect.left - item.x,
-      offsetY: event.clientY - boardRect.top - item.y,
+      offsetX: e.clientX - rect.left - item.x,
+      offsetY: e.clientY - rect.top - item.y,
     };
   };
 
-  const startResize = (event, item) => {
-    event.preventDefault();
-    event.stopPropagation();
-
+  const startResize = (e, item) => {
+    e.preventDefault();
+    e.stopPropagation();
     resizeRef.current = {
       id: item.id,
-      startX: event.clientX,
-      startY: event.clientY,
+      startX: e.clientX,
+      startY: e.clientY,
       startW: item.w,
       startH: item.h,
     };
   };
 
   useEffect(() => {
-    const onMove = (event) => {
-      const boardRect = boardRef.current?.getBoundingClientRect();
-      if (!boardRect) return;
-
+    const onMove = (e) => {
+      const rect = boardRef.current?.getBoundingClientRect();
+      if (!rect) return;
       if (dragRef.current) {
         const { id, offsetX, offsetY } = dragRef.current;
         updateItem(id, {
-          x: event.clientX - boardRect.left - offsetX,
-          y: event.clientY - boardRect.top - offsetY,
+          x: e.clientX - rect.left - offsetX,
+          y: e.clientY - rect.top - offsetY,
         });
       }
-
       if (resizeRef.current) {
         const { id, startX, startY, startW, startH } = resizeRef.current;
-        const deltaX = event.clientX - startX;
-        const deltaY = event.clientY - startY;
-
         updateItem(id, {
-          w: Math.max(60, startW + deltaX),
-          h: Math.max(50, startH + deltaY),
+          w: Math.max(60, startW + e.clientX - startX),
+          h: Math.max(6, startH + e.clientY - startY),
         });
       }
     };
-
     const onUp = () => {
       dragRef.current = null;
       resizeRef.current = null;
     };
-
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-
     return () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
@@ -236,368 +447,521 @@ function CreativeBoardPage() {
   }, [updateItem]);
 
   useEffect(() => {
-    const onPaste = (event) => {
-      const files = Array.from(event.clipboardData?.files || []);
-      const imageFile = files.find((file) => file.type.startsWith("image/"));
-
-      if (imageFile) {
-        addImageFromFile(imageFile);
-      }
+    const onPaste = (e) => {
+      const file = Array.from(e.clipboardData?.files ?? []).find((f) =>
+        f.type.startsWith("image/"),
+      );
+      if (file) addImageFromFile(file);
     };
-
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, []);
+  }, [addImageFromFile]);
 
-  const handleClearBoard = () => {
-    setItems([]);
-    setSelectedId(null);
-  };
+  const sel = selectedItem?.type === "text" ? selectedItem : null;
+  const selShape = selectedItem?.type === "shape" ? selectedItem : null;
 
-  const handlePrint = async () => {
-    const imageElements = boardRef.current
-      ? Array.from(boardRef.current.querySelectorAll("img"))
-      : [];
-
-    if (imageElements.length > 0) {
-      await Promise.all(
-        imageElements.map((img) => {
-          if (img.complete) return Promise.resolve();
-
-          return new Promise((resolve) => {
-            const finish = () => resolve();
-            img.addEventListener("load", finish, { once: true });
-            img.addEventListener("error", finish, { once: true });
-          });
-        })
-      );
-    }
-
-    window.print();
-  };
+  const activeBg =
+    BACKGROUND_PRESETS.find((b) => b.key === boardBg) ?? BACKGROUND_PRESETS[0];
+  const borderStyle = getBorderStyle(borderPreset, borderColor, borderWidth);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.2),transparent_35%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(6,182,212,0.16),transparent_35%),linear-gradient(to_bottom,#f0f9ff,#ecfeff)] px-4 py-8 text-slate-900 print:bg-white print:p-0">
-      <div className="mx-auto grid w-full max-w-[1500px] items-start gap-6 xl:grid-cols-[380px_1fr] print:block print:max-w-none">
-        <aside className="rounded-[28px] border border-cyan-200/70 bg-white/90 p-6 shadow-2xl shadow-cyan-500/10 backdrop-blur-lg xl:sticky xl:top-6 print:hidden">
-          <div className="mb-2 flex items-center gap-3 text-2xl font-extrabold text-slate-900">
-            <Sparkles size={24} className="text-cyan-700" />
-            <span className="bg-gradient-to-r from-cyan-700 via-sky-700 to-blue-700 bg-clip-text text-transparent">
-              Board Criativo
-            </span>
+    <div className="min-h-screen bg-slate-100 px-2 py-4 sm:px-4 sm:py-6 print:bg-white print:p-0">
+      <style>{`
+        @media print {
+          @page { size: A4 portrait; margin: 0; }
+          html, body { margin: 0 !important; padding: 0 !important; }
+          .print-sheet {
+            position: fixed !important; top: 0 !important; left: 0 !important;
+            width: 100vw !important; height: 100vh !important;
+            padding: 8mm !important; box-sizing: border-box !important;
+          }
+        }
+      `}</style>
+
+      <div className="mx-auto grid max-w-7xl gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-[340px_1fr] print:block">
+        {/* ── SIDEBAR ── */}
+        <aside className="rounded-xl border bg-white p-4 sm:p-5 print:hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+          <div className="mb-4 flex items-center gap-2 text-lg font-bold">
+            <LayoutTemplate size={20} /> Board Criativo
           </div>
-          <p className="mb-5 text-sm leading-relaxed text-slate-500">
-            A4 retrato para montar atividades: cole imagem com Ctrl+V, suba arquivos e organize livremente.
-          </p>
 
           <HeaderConfigPanel
             header={header}
             onHeaderChange={handleHeaderChange}
             months={MONTHS}
-            title="Informacoes da folha"
+            title="Informações da folha"
             collapsible
             icon={School}
           />
 
-          <div className="mb-4 rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
-            <div className="mb-3 text-sm font-bold text-slate-800">Ferramentas do board</div>
-            <div className="flex flex-wrap gap-2.5">
-              <button type="button" onClick={handleAddText} className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-700">
-                <Type size={14} />
-                Inserir texto
+          {/* Tools */}
+          <SectionBox title="Ferramentas">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleAddText}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700 active:scale-95 transition-all"
+              >
+                <Type size={13} /> Texto
               </button>
 
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-sky-600 px-3 py-2 text-xs font-bold text-white hover:bg-sky-700">
-                <ImagePlus size={14} />
-                Carregar imagem
-                <input type="file" accept="image/*" className="hidden" onChange={handleUploadImage} />
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-600 active:scale-95 transition-all">
+                <ImagePlus size={13} /> Imagem
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleUploadImage}
+                />
               </label>
 
-              <button type="button" onClick={handleDeleteSelected} className="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-sky-900 hover:bg-sky-100">
-                <Trash2 size={14} />
-                Remover item
-              </button>
-
-              <button type="button" onClick={handleClearBoard} className="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-sky-900 hover:bg-sky-100">
-                Limpar board
-              </button>
-
-              <button type="button" onClick={handlePrint} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-700 px-3 py-2 text-xs font-bold text-white hover:from-cyan-700 hover:to-blue-800">
-                <Printer size={14} />
-                Imprimir
+              <button
+                type="button"
+                onClick={handleDeleteSelected}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 active:scale-95 transition-all"
+              >
+                <Trash2 size={13} /> Remover
               </button>
             </div>
 
-            <p className="mt-3 text-xs text-slate-600">Dica: clique no board e use Ctrl+V para colar imagem da internet.</p>
-            {imageError ? <p className="mt-1 text-xs font-semibold text-rose-600">{imageError}</p> : null}
-          </div>
+            {/* Shape picker */}
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-slate-600">
+                Formas
+              </p>
+              <div className="grid grid-cols-4 gap-1.5">
+                {SHAPE_PRESETS.map(({ key, label, Icon }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    title={label}
+                    onClick={() => handleAddShape(key)}
+                    className="flex flex-col items-center gap-1 rounded-lg border border-slate-200 bg-white p-2 text-slate-700 hover:bg-slate-100 active:scale-95 transition-all"
+                  >
+                    <Icon size={16} />
+                    <span className="text-[10px] leading-none">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          {selectedItem?.type === "text" ? (
-            <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
-              <div className="mb-2 text-sm font-bold text-slate-800">Editar texto selecionado</div>
+            <p className="text-xs text-slate-500">
+              Dica: use Ctrl+V para colar imagem.
+            </p>
+            {imageError && (
+              <p className="text-xs font-semibold text-red-600">{imageError}</p>
+            )}
+          </SectionBox>
+
+          {/* Board appearance */}
+          <SectionBox title="Aparência da folha">
+            {/* Background */}
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-slate-600">Fundo</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {BACKGROUND_PRESETS.map((bg) => (
+                  <button
+                    key={bg.key}
+                    type="button"
+                    onClick={() => setBoardBg(bg.key)}
+                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                      boardBg === bg.key
+                        ? "border-slate-700 bg-slate-900 text-white"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {bg.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Border */}
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-slate-600">
+                Margem decorativa
+              </p>
+              <div className="grid grid-cols-3 gap-1.5 mb-2">
+                {BORDER_PRESETS.map((b) => (
+                  <button
+                    key={b.key}
+                    type="button"
+                    onClick={() => setBorderPreset(b.key)}
+                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                      borderPreset === b.key
+                        ? "border-slate-700 bg-slate-900 text-white"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+
+              {borderPreset !== "none" && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <label className="w-24 shrink-0 text-xs font-medium text-slate-600">
+                      Cor
+                    </label>
+                    <input
+                      type="color"
+                      value={borderColor}
+                      onChange={(e) => setBorderColor(e.target.value)}
+                      className="h-8 w-full cursor-pointer rounded-md border border-slate-300 bg-white p-0.5"
+                    />
+                  </div>
+                  <SliderRow
+                    label="Espessura"
+                    min={2}
+                    max={24}
+                    value={borderWidth}
+                    onChange={(e) => setBorderWidth(Number(e.target.value))}
+                    display={`${borderWidth}px`}
+                  />
+                </div>
+              )}
+            </div>
+          </SectionBox>
+
+          {/* Text editor */}
+          {sel && (
+            <SectionBox title="Editar texto">
               <textarea
-                className={`${fieldClassName} min-h-[90px] resize-y`}
-                value={selectedItem.content}
-                onChange={(e) => updateItem(selectedItem.id, { content: e.target.value })}
+                className={`${fieldCls} min-h-[80px] resize-y`}
+                value={sel.content}
+                onChange={(e) =>
+                  updateItem(sel.id, { content: e.target.value })
+                }
               />
 
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-700">Fonte</label>
+                  <label className="text-xs font-medium text-slate-600">
+                    Fonte
+                  </label>
                   <select
-                    className={fieldClassName}
-                    value={textStylePreset.fontFamily}
-                    onChange={(e) => updateItem(selectedItem.id, { fontFamily: e.target.value })}
+                    className={fieldCls}
+                    value={sel.fontFamily}
+                    onChange={(e) =>
+                      updateItem(sel.id, { fontFamily: e.target.value })
+                    }
                   >
-                    <option value="Arial">Arial</option>
-                    <option value="Verdana">Verdana</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Times New Roman">Times New Roman</option>
-                    <option value="Trebuchet MS">Trebuchet MS</option>
-                    <option value="Comic Sans MS">Comic Sans MS</option>
+                    {FONT_FAMILIES.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
                   </select>
                 </div>
-
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-700">Cor do texto</label>
+                  <label className="text-xs font-medium text-slate-600">
+                    Cor
+                  </label>
                   <input
                     type="color"
-                    className="h-10 w-full cursor-pointer rounded-xl border border-slate-200 bg-white p-1"
-                    value={textStylePreset.color}
-                    onChange={(e) => updateItem(selectedItem.id, { color: e.target.value })}
+                    className="h-9 w-full cursor-pointer rounded-md border border-slate-300 bg-white p-1"
+                    value={sel.color}
+                    onChange={(e) =>
+                      updateItem(sel.id, { color: e.target.value })
+                    }
                   />
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
+              <div className="flex flex-wrap gap-1.5">
+                <ToggleButton
+                  active={sel.fontWeight === "700"}
+                  title="Bold"
                   onClick={() =>
-                    updateItem(selectedItem.id, {
-                      fontWeight: textStylePreset.fontWeight === "700" ? "400" : "700",
+                    updateItem(sel.id, {
+                      fontWeight: sel.fontWeight === "700" ? "400" : "700",
                     })
                   }
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-semibold ${
-                    textStylePreset.fontWeight === "700"
-                      ? "border-cyan-600 bg-cyan-600 text-white"
-                      : "border-slate-300 bg-white text-slate-700"
-                  }`}
                 >
                   <Bold size={13} />
-                  Bold
-                </button>
-
-                <button
-                  type="button"
+                </ToggleButton>
+                <ToggleButton
+                  active={sel.fontStyle === "italic"}
+                  title="Italic"
                   onClick={() =>
-                    updateItem(selectedItem.id, {
-                      fontStyle: textStylePreset.fontStyle === "italic" ? "normal" : "italic",
+                    updateItem(sel.id, {
+                      fontStyle:
+                        sel.fontStyle === "italic" ? "normal" : "italic",
                     })
                   }
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-semibold ${
-                    textStylePreset.fontStyle === "italic"
-                      ? "border-cyan-600 bg-cyan-600 text-white"
-                      : "border-slate-300 bg-white text-slate-700"
-                  }`}
                 >
                   <Italic size={13} />
-                  Italic
-                </button>
-
-                <button
-                  type="button"
+                </ToggleButton>
+                <ToggleButton
+                  active={sel.textDecoration === "underline"}
+                  title="Underline"
                   onClick={() =>
-                    updateItem(selectedItem.id, {
-                      textDecoration: textStylePreset.textDecoration === "underline" ? "none" : "underline",
+                    updateItem(sel.id, {
+                      textDecoration:
+                        sel.textDecoration === "underline"
+                          ? "none"
+                          : "underline",
                     })
                   }
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-semibold ${
-                    textStylePreset.textDecoration === "underline"
-                      ? "border-cyan-600 bg-cyan-600 text-white"
-                      : "border-slate-300 bg-white text-slate-700"
-                  }`}
                 >
                   <Underline size={13} />
-                  Underline
-                </button>
+                </ToggleButton>
+                <div className="ml-1 flex gap-1">
+                  {[
+                    { align: "left", Icon: AlignLeft },
+                    { align: "center", Icon: AlignCenter },
+                    { align: "right", Icon: AlignRight },
+                    { align: "justify", Icon: AlignJustify },
+                  ].map(({ align, Icon }) => (
+                    <ToggleButton
+                      key={align}
+                      active={sel.textAlign === align}
+                      onClick={() => updateItem(sel.id, { textAlign: align })}
+                    >
+                      <Icon size={13} />
+                    </ToggleButton>
+                  ))}
+                </div>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => updateItem(selectedItem.id, { textAlign: "left" })}
-                  className={`rounded-lg border px-2 py-1.5 ${
-                    textStylePreset.textAlign === "left"
-                      ? "border-cyan-600 bg-cyan-600 text-white"
-                      : "border-slate-300 bg-white text-slate-700"
-                  }`}
-                >
-                  <AlignLeft size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateItem(selectedItem.id, { textAlign: "center" })}
-                  className={`rounded-lg border px-2 py-1.5 ${
-                    textStylePreset.textAlign === "center"
-                      ? "border-cyan-600 bg-cyan-600 text-white"
-                      : "border-slate-300 bg-white text-slate-700"
-                  }`}
-                >
-                  <AlignCenter size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateItem(selectedItem.id, { textAlign: "right" })}
-                  className={`rounded-lg border px-2 py-1.5 ${
-                    textStylePreset.textAlign === "right"
-                      ? "border-cyan-600 bg-cyan-600 text-white"
-                      : "border-slate-300 bg-white text-slate-700"
-                  }`}
-                >
-                  <AlignRight size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateItem(selectedItem.id, { textAlign: "justify" })}
-                  className={`rounded-lg border px-2 py-1.5 ${
-                    textStylePreset.textAlign === "justify"
-                      ? "border-cyan-600 bg-cyan-600 text-white"
-                      : "border-slate-300 bg-white text-slate-700"
-                  }`}
-                >
-                  <AlignJustify size={13} />
-                </button>
-              </div>
-
-              <div className="mt-2 flex items-center gap-2">
-                <label className="text-xs font-semibold text-slate-700">Tamanho</label>
-                <input
-                  type="range"
+              <div className="space-y-2">
+                <SliderRow
+                  label="Tamanho"
                   min={12}
-                  max={48}
-                  value={selectedItem.fontSize}
-                  onChange={(e) => updateItem(selectedItem.id, { fontSize: Number(e.target.value) })}
+                  max={72}
+                  value={sel.fontSize}
+                  onChange={(e) =>
+                    updateItem(sel.id, { fontSize: Number(e.target.value) })
+                  }
+                  display={`${sel.fontSize}px`}
                 />
-                <span className="text-xs font-bold text-slate-700">{selectedItem.fontSize}px</span>
-              </div>
-
-              <div className="mt-2 flex items-center gap-2">
-                <label className="text-xs font-semibold text-slate-700">Espaco linha</label>
-                <input
-                  type="range"
+                <SliderRow
+                  label="Linha"
                   min={1}
                   max={2.2}
                   step={0.05}
-                  value={textStylePreset.lineHeight}
-                  onChange={(e) => updateItem(selectedItem.id, { lineHeight: Number(e.target.value) })}
+                  value={sel.lineHeight}
+                  onChange={(e) =>
+                    updateItem(sel.id, { lineHeight: Number(e.target.value) })
+                  }
+                  display={sel.lineHeight.toFixed(2)}
                 />
-                <span className="text-xs font-bold text-slate-700">{textStylePreset.lineHeight.toFixed(2)}</span>
-              </div>
-
-              <div className="mt-2 flex items-center gap-2">
-                <label className="text-xs font-semibold text-slate-700">Indentacao</label>
-                <input
-                  type="range"
+                <SliderRow
+                  label="Indentação"
                   min={0}
                   max={60}
-                  step={1}
-                  value={textStylePreset.textIndent}
-                  onChange={(e) => updateItem(selectedItem.id, { textIndent: Number(e.target.value) })}
+                  value={sel.textIndent}
+                  onChange={(e) =>
+                    updateItem(sel.id, { textIndent: Number(e.target.value) })
+                  }
+                  display={`${sel.textIndent}px`}
                 />
-                <span className="text-xs font-bold text-slate-700">{textStylePreset.textIndent}px</span>
-              </div>
-
-              <div className="mt-2 flex items-center gap-2">
-                <label className="text-xs font-semibold text-slate-700">Espaco letras</label>
-                <input
-                  type="range"
+                <SliderRow
+                  label="Espaç. letras"
                   min={-1}
                   max={6}
                   step={0.2}
-                  value={textStylePreset.letterSpacing}
-                  onChange={(e) => updateItem(selectedItem.id, { letterSpacing: Number(e.target.value) })}
+                  value={sel.letterSpacing}
+                  onChange={(e) =>
+                    updateItem(sel.id, {
+                      letterSpacing: Number(e.target.value),
+                    })
+                  }
+                  display={`${sel.letterSpacing.toFixed(1)}px`}
                 />
-                <span className="text-xs font-bold text-slate-700">{textStylePreset.letterSpacing.toFixed(1)}px</span>
               </div>
-            </div>
-          ) : null}
+            </SectionBox>
+          )}
+
+          {/* Shape editor */}
+          {selShape && (
+            <SectionBox title="Editar forma">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-slate-600">
+                    Preenchimento
+                  </label>
+                  <input
+                    type="color"
+                    className="h-9 w-full cursor-pointer rounded-md border border-slate-300 bg-white p-1"
+                    value={selShape.fillColor}
+                    onChange={(e) =>
+                      updateItem(selShape.id, { fillColor: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-slate-600">
+                    Contorno
+                  </label>
+                  <input
+                    type="color"
+                    className="h-9 w-full cursor-pointer rounded-md border border-slate-300 bg-white p-1"
+                    value={selShape.strokeColor}
+                    onChange={(e) =>
+                      updateItem(selShape.id, { strokeColor: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <SliderRow
+                label="Espessura"
+                min={0}
+                max={12}
+                value={selShape.strokeWidth}
+                onChange={(e) =>
+                  updateItem(selShape.id, {
+                    strokeWidth: Number(e.target.value),
+                  })
+                }
+                display={`${selShape.strokeWidth}px`}
+              />
+              <SliderRow
+                label="Opacidade"
+                min={0.1}
+                max={1}
+                step={0.05}
+                value={selShape.opacity}
+                onChange={(e) =>
+                  updateItem(selShape.id, { opacity: Number(e.target.value) })
+                }
+                display={`${Math.round(selShape.opacity * 100)}%`}
+              />
+            </SectionBox>
+          )}
+
+          {/* Actions */}
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={handlePrint}
+              className="flex-1 flex items-center justify-center gap-2 bg-slate-900 text-white py-2 px-3 rounded-lg hover:bg-slate-700 active:scale-95 transition-all text-sm font-medium shadow-sm"
+            >
+              <Printer size={15} /> Imprimir
+            </button>
+            <button
+              onClick={handleClear}
+              className="flex-1 flex items-center justify-center gap-2 border border-slate-300 text-slate-600 py-2 px-3 rounded-lg hover:bg-slate-50 hover:border-slate-400 active:scale-95 transition-all text-sm font-medium"
+            >
+              <Eraser size={15} /> Limpar
+            </button>
+          </div>
         </aside>
 
-        <main className="overflow-auto pb-5 print:overflow-visible print:pb-0">
-          <div className="flex justify-start xl:justify-center print:block">
-            <section className="w-[210mm] min-h-[297mm] rounded-[20px] bg-white p-[8mm] shadow-2xl shadow-sky-900/15 print:h-[281mm] print:w-full print:min-h-0 print:overflow-hidden print:rounded-none print:p-0 print:shadow-none">
-              <SheetHeader header={header} monthLabel={MONTHS[header.month - 1]} year={header.year} />
+        {/* ── BOARD ── */}
+        <main className="flex justify-center print:block overflow-x-auto">
+          <section
+            className="print-sheet w-[210mm] min-h-[297mm] bg-white shadow-md print:w-full print:min-h-0 print:shadow-none"
+            style={{
+              padding: borderPreset !== "none" ? `${borderWidth + 8}px` : "8mm",
+              ...borderStyle,
+            }}
+          >
+            <SheetHeader
+              header={header}
+              monthLabel={MONTHS[header.month - 1]}
+              year={header.year}
+            />
 
-              <div
-                ref={boardRef}
-                className="relative min-h-[215mm] rounded-xl border-2 border-dashed border-cyan-300 bg-gradient-to-b from-cyan-50/30 to-white print:h-[170mm] print:min-h-0 print:overflow-hidden print:rounded-none print:border-0 print:bg-white"
-                onMouseDown={() => setSelectedId(null)}
-              >
-                {items.map((item) => {
-                  const isSelected = item.id === selectedId;
+            <div
+              ref={boardRef}
+              className="relative min-h-[215mm] print:min-h-0 print:h-[230mm] print:rounded-none print:border-0"
+              style={{
+                ...activeBg.style,
+                borderRadius: borderPreset === "none" ? "8px" : "0",
+                border: borderPreset === "none" ? "2px dashed #e2e8f0" : "none",
+              }}
+              onMouseDown={() => setSelectedId(null)}
+            >
+              {items.map((item) => {
+                const isSelected = item.id === selectedId;
+                return (
+                  <div
+                    key={item.id}
+                    className={`absolute cursor-move select-none ${
+                      item.type !== "shape"
+                        ? "overflow-hidden rounded border"
+                        : ""
+                    } ${
+                      isSelected && item.type !== "shape"
+                        ? "border-slate-700 shadow-md"
+                        : item.type !== "shape"
+                          ? "border-slate-300"
+                          : ""
+                    } ${item.type !== "shape" ? "bg-white" : ""} print:rounded-none print:border-0 print:bg-transparent print:shadow-none`}
+                    style={{
+                      left: item.x,
+                      top: item.y,
+                      width: item.w,
+                      height: item.h,
+                      ...(isSelected && item.type === "shape"
+                        ? { outline: "2px solid #334155", outlineOffset: "2px" }
+                        : {}),
+                    }}
+                    onMouseDown={(e) => startDrag(e, item)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedId(item.id);
+                    }}
+                  >
+                    {item.type === "image" && (
+                      <img
+                        src={item.src}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        draggable={false}
+                      />
+                    )}
+                    {item.type === "text" && (
+                      <div
+                        className="h-full w-full whitespace-pre-wrap p-2"
+                        style={{
+                          fontSize: item.fontSize,
+                          color: item.color,
+                          fontWeight: item.fontWeight,
+                          fontStyle: item.fontStyle,
+                          textDecoration: item.textDecoration,
+                          textAlign: item.textAlign,
+                          fontFamily: item.fontFamily,
+                          lineHeight: item.lineHeight,
+                          letterSpacing: `${item.letterSpacing}px`,
+                          textIndent: `${item.textIndent}px`,
+                        }}
+                      >
+                        {item.content}
+                      </div>
+                    )}
+                    {item.type === "shape" && <ShapeRenderer item={item} />}
 
-                  return (
-                    <div
-                      key={item.id}
-                      className={`absolute cursor-move select-none overflow-hidden rounded-lg border ${isSelected ? "border-cyan-600 shadow-lg" : "border-cyan-200"} bg-white/80 print:rounded-none print:border-0 print:bg-transparent print:shadow-none`}
-                      style={{ left: item.x, top: item.y, width: item.w, height: item.h }}
-                      onMouseDown={(event) => startDrag(event, item)}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedId(item.id);
-                      }}
-                    >
-                      {item.type === "image" ? (
-                        <img src={item.src} alt="item" className="h-full w-full object-cover" draggable={false} />
-                      ) : (
-                        <div
-                          className="h-full w-full whitespace-pre-wrap p-2"
-                          style={{
-                            fontSize: item.fontSize,
-                            color: item.color || "#0f172a",
-                            fontWeight: item.fontWeight || "400",
-                            fontStyle: item.fontStyle || "normal",
-                            textDecoration: item.textDecoration || "none",
-                            textAlign: item.textAlign || "left",
-                            fontFamily: item.fontFamily || "Arial",
-                            lineHeight: item.lineHeight || 1.35,
-                            letterSpacing: `${item.letterSpacing || 0}px`,
-                            textIndent: `${item.textIndent || 0}px`,
-                          }}
-                        >
-                          {item.content}
-                        </div>
-                      )}
-
-                      {isSelected ? (
-                        <button
-                          type="button"
-                          className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-600 text-white shadow-md hover:bg-rose-700 print:hidden"
-                          onMouseDown={(event) => event.stopPropagation()}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setItems((prev) => prev.filter((boardItem) => boardItem.id !== item.id));
-                            setSelectedId(null);
-                          }}
-                          aria-label="Excluir item"
-                          title="Excluir item"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      ) : null}
-
+                    {isSelected && (
                       <button
                         type="button"
-                        className="absolute bottom-0 right-0 h-4 w-4 cursor-se-resize rounded-tl bg-cyan-600 print:hidden"
-                        onMouseDown={(event) => startResize(event, item)}
-                        aria-label="Redimensionar"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          </div>
+                        className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white hover:bg-red-700 print:hidden"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setItems((prev) =>
+                            prev.filter((b) => b.id !== item.id),
+                          );
+                          setSelectedId(null);
+                        }}
+                        aria-label="Excluir"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="absolute bottom-0 right-0 h-3.5 w-3.5 cursor-se-resize rounded-tl bg-slate-600 print:hidden"
+                      onMouseDown={(e) => startResize(e, item)}
+                      aria-label="Redimensionar"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         </main>
       </div>
     </div>
