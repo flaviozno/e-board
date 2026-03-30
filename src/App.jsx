@@ -3,6 +3,7 @@ import { ClipboardPen, Table, Lock, Menu, X } from "lucide-react";
 import AttendancePage from "./components/AttendancePage";
 import CreativeBoardPage from "./components/CreativeBoardPage";
 import HomePage from "./components/HomePage";
+import ComingSoonPage from "./components/ComingSoonPage";
 
 function App() {
   const [mode, setMode] = useState("home");
@@ -31,7 +32,7 @@ function App() {
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      {mode !== "home" && (
+      {mode !== "home" && mode !== "coming-soon" && (
         <nav
           className={`fixed left-0 top-0 h-screen border-r border-slate-200 bg-white print:hidden shadow-lg transition-all duration-300 ease-in-out z-40 ${
             sidebarOpen ? "w-64" : "-translate-x-full"
@@ -126,7 +127,7 @@ function App() {
         </nav>
       )}
 
-      {mode !== "home" && !sidebarOpen && (
+      {mode !== "home" && mode !== "coming-soon" && !sidebarOpen && (
         <button
           onClick={() => setSidebarOpen(true)}
           className="fixed left-4 top-4 z-40 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg hover:bg-slate-800 transition-all print:hidden"
@@ -136,7 +137,7 @@ function App() {
         </button>
       )}
 
-      {sidebarOpen && mode !== "home" && (
+      {sidebarOpen && mode !== "home" && mode !== "coming-soon" && (
         <div
           className="fixed inset-0 z-30 hidden lg:hidden"
           onClick={() => setSidebarOpen(false)}
@@ -146,6 +147,8 @@ function App() {
       <main className="flex-1 transition-all duration-300">
         {mode === "home" ? (
           <HomePage onNavigate={setMode} />
+        ) : mode === "coming-soon" ? (
+          <ComingSoonPage onNavigate={setMode} />
         ) : mode === "attendance" ? (
           <AttendancePage />
         ) : (

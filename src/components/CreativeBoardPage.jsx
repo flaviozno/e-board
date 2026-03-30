@@ -21,11 +21,12 @@ import {
   Star,
   Heart,
   Minus,
+  FunctionSquare,
 } from "lucide-react";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 import SheetHeader from "./SheetHeader";
 import HeaderConfigPanel from "./HeaderConfigPanel";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const MONTHS = [
   "Janeiro",
@@ -66,7 +67,6 @@ const FONT_FAMILIES = [
   "Comic Sans MS",
 ];
 
-// shape → CSS clip-path or border-radius
 const SHAPE_STYLES = {
   rectangle: { borderRadius: "4px" },
   circle: { borderRadius: "50%" },
@@ -91,13 +91,13 @@ const SHAPE_STYLES = {
 };
 
 const SHAPE_PRESETS = [
-  { key: "rectangle", label: "Quadrado", Icon: Square, defaultH: 80 },
-  { key: "circle", label: "Círculo", Icon: Circle, defaultH: 80 },
-  { key: "triangle", label: "Triângulo", Icon: Triangle, defaultH: 80 },
-  { key: "star", label: "Estrela", Icon: Star, defaultH: 80 },
-  { key: "heart", label: "Coração", Icon: Heart, defaultH: 80 },
-  { key: "diamond", label: "Losango", Icon: Square, defaultH: 80 },
-  { key: "line", label: "Linha", Icon: Minus, defaultH: 6 },
+  { key: "rectangle", label: "Quadrado", Icon: Square },
+  { key: "circle", label: "Círculo", Icon: Circle },
+  { key: "triangle", label: "Triângulo", Icon: Triangle },
+  { key: "star", label: "Estrela", Icon: Star },
+  { key: "heart", label: "Coração", Icon: Heart },
+  { key: "diamond", label: "Losango", Icon: Square },
+  { key: "line", label: "Linha", Icon: Minus },
 ];
 
 const BORDER_PRESETS = [
@@ -147,14 +147,71 @@ const BACKGROUND_PRESETS = [
   { key: "yellow", label: "Amarelo", style: { background: "#fefce8" } },
 ];
 
-// ─── Factories ────────────────────────────────────────────────────────────────
+const MATH_TEMPLATES = [
+  {
+    category: "Básico",
+    items: [
+      { label: "Fração", code: "\\frac{a}{b}" },
+      { label: "Raiz", code: "\\sqrt{x}" },
+      { label: "Potência", code: "x^{n}" },
+      { label: "Índice", code: "x_{i}" },
+      { label: "Raiz n", code: "\\sqrt[n]{x}" },
+      { label: "Valor abs.", code: "|x|" },
+    ],
+  },
+  {
+    category: "Álgebra",
+    items: [
+      { label: "Bhaskara", code: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}" },
+      {
+        label: "Sistema",
+        code: "\\begin{cases} x + y = 1 \\\\ x - y = 0 \\end{cases}",
+      },
+      { label: "Módulo", code: "\\left| \\frac{a}{b} \\right|" },
+      { label: "Binômio", code: "(a + b)^2 = a^2 + 2ab + b^2" },
+    ],
+  },
+  {
+    category: "Cálculo",
+    items: [
+      { label: "Limite", code: "\\lim_{x \\to \\infty} f(x)" },
+      { label: "Derivada", code: "\\frac{d}{dx} f(x)" },
+      { label: "Integral", code: "\\int_{a}^{b} f(x)\\,dx" },
+      { label: "Somatório", code: "\\sum_{i=1}^{n} i" },
+      { label: "Produtório", code: "\\prod_{i=1}^{n} i" },
+    ],
+  },
+  {
+    category: "Trigonometria",
+    items: [
+      { label: "Seno", code: "\\sin(\\theta)" },
+      { label: "Cosseno", code: "\\cos(\\theta)" },
+      { label: "Tangente", code: "\\tan(\\theta)" },
+      { label: "Pitágoras", code: "a^2 + b^2 = c^2" },
+      { label: "Lei cossenos", code: "c^2 = a^2 + b^2 - 2ab\\cos(C)" },
+    ],
+  },
+  {
+    category: "Símbolos",
+    items: [
+      { label: "Pi", code: "\\pi" },
+      { label: "Infinito", code: "\\infty" },
+      { label: "Pertence", code: "\\in" },
+      { label: "Não pertence", code: "\\notin" },
+      { label: "Subconjunto", code: "\\subset" },
+      { label: "União", code: "A \\cup B" },
+      { label: "Interseção", code: "A \\cap B" },
+      { label: "Portanto", code: "\\therefore" },
+    ],
+  },
+];
 
 const createTextItem = () => ({
   id: crypto.randomUUID(),
   type: "text",
   x: 40,
   y: 40,
-  w: 180,
+  w: 200,
   h: 70,
   content: "Digite aqui...",
   fontSize: 18,
@@ -186,14 +243,25 @@ const createShapeItem = (shape) => ({
   x: 60,
   y: 60,
   w: 80,
-  h: SHAPE_PRESETS.find((s) => s.key === shape)?.defaultH ?? 80,
+  h: shape === "line" ? 6 : 80,
   fillColor: "#e2e8f0",
   strokeColor: "#64748b",
   strokeWidth: 2,
   opacity: 1,
 });
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+const createMathItem = () => ({
+  id: crypto.randomUUID(),
+  type: "math",
+  x: 60,
+  y: 60,
+  w: 260,
+  h: 90,
+  latex: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+  fontSize: 22,
+  color: "#0f172a",
+  displayMode: true,
+});
 
 const fieldCls =
   "w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-1 focus:ring-slate-400";
@@ -240,7 +308,30 @@ const SectionBox = ({ title, children }) => (
   </div>
 );
 
-// ─── Shape renderer (pure CSS, no SVG needed) ─────────────────────────────────
+const MathRenderer = ({ item }) => {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    try {
+      katex.render(item.latex || "\\text{Fórmula vazia}", ref.current, {
+        throwOnError: false,
+        displayMode: item.displayMode ?? true,
+        output: "html",
+      });
+    } catch {
+      ref.current.textContent = "Erro no LaTeX";
+    }
+  }, [item.latex, item.displayMode]);
+
+  return (
+    <div
+      ref={ref}
+      className="h-full w-full flex items-center justify-center overflow-hidden px-2"
+      style={{ fontSize: item.fontSize, color: item.color }}
+    />
+  );
+};
 
 const ShapeRenderer = ({ item }) => (
   <div
@@ -258,17 +349,8 @@ const ShapeRenderer = ({ item }) => (
   />
 );
 
-// ─── Border renderer ──────────────────────────────────────────────────────────
-
 const getBorderStyle = (preset, color, width) => {
   if (preset === "none") return {};
-  if (preset === "stars") {
-    // emoji border via outline trick — rendered as inner padding pattern
-    return {
-      outline: `${width}px solid ${color}`,
-      outlineOffset: `-${width}px`,
-    };
-  }
   const styleMap = {
     simple: "solid",
     double: "double",
@@ -278,19 +360,16 @@ const getBorderStyle = (preset, color, width) => {
   return { border: `${width}px ${styleMap[preset] ?? "solid"} ${color}` };
 };
 
-// ─── Main component ───────────────────────────────────────────────────────────
-
 function CreativeBoardPage() {
   const [header, setHeader] = useState(INITIAL_HEADER);
   const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [imageError, setImageError] = useState("");
-
-  // Board appearance
   const [boardBg, setBoardBg] = useState("white");
   const [borderPreset, setBorderPreset] = useState("none");
   const [borderColor, setBorderColor] = useState("#64748b");
   const [borderWidth, setBorderWidth] = useState(8);
+  const [mathTab, setMathTab] = useState(MATH_TEMPLATES[0].category);
 
   const boardRef = useRef(null);
   const dragRef = useRef(null);
@@ -350,6 +429,12 @@ function CreativeBoardPage() {
 
   const handleAddShape = (shape) => {
     const item = createShapeItem(shape);
+    setItems((prev) => [...prev, item]);
+    setSelectedId(item.id);
+  };
+
+  const handleAddMath = () => {
+    const item = createMathItem();
     setItems((prev) => [...prev, item]);
     setSelectedId(item.id);
   };
@@ -459,10 +544,14 @@ function CreativeBoardPage() {
 
   const sel = selectedItem?.type === "text" ? selectedItem : null;
   const selShape = selectedItem?.type === "shape" ? selectedItem : null;
+  const selMath = selectedItem?.type === "math" ? selectedItem : null;
 
   const activeBg =
     BACKGROUND_PRESETS.find((b) => b.key === boardBg) ?? BACKGROUND_PRESETS[0];
   const borderStyle = getBorderStyle(borderPreset, borderColor, borderWidth);
+  const sheetPadding = borderPreset !== "none" ? `${borderWidth + 8}px` : "8mm";
+
+  const activeMathCategory = MATH_TEMPLATES.find((g) => g.category === mathTab);
 
   return (
     <div className="min-h-screen bg-slate-100 px-2 py-4 sm:px-4 sm:py-6 print:bg-white print:p-0">
@@ -479,7 +568,6 @@ function CreativeBoardPage() {
       `}</style>
 
       <div className="mx-auto grid max-w-7xl gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-[340px_1fr] print:block">
-        {/* ── SIDEBAR ── */}
         <aside className="rounded-xl border bg-white p-4 sm:p-5 print:hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
           <div className="mb-4 flex items-center gap-2 text-lg font-bold">
             <LayoutTemplate size={20} /> Board Criativo
@@ -494,7 +582,6 @@ function CreativeBoardPage() {
             icon={School}
           />
 
-          {/* Tools */}
           <SectionBox title="Ferramentas">
             <div className="flex flex-wrap gap-2">
               <button
@@ -517,6 +604,14 @@ function CreativeBoardPage() {
 
               <button
                 type="button"
+                onClick={handleAddMath}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 active:scale-95 transition-all"
+              >
+                <FunctionSquare size={13} /> Fórmula
+              </button>
+
+              <button
+                type="button"
                 onClick={handleDeleteSelected}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 active:scale-95 transition-all"
               >
@@ -524,7 +619,6 @@ function CreativeBoardPage() {
               </button>
             </div>
 
-            {/* Shape picker */}
             <div>
               <p className="mb-1.5 text-xs font-medium text-slate-600">
                 Formas
@@ -553,9 +647,7 @@ function CreativeBoardPage() {
             )}
           </SectionBox>
 
-          {/* Board appearance */}
           <SectionBox title="Aparência da folha">
-            {/* Background */}
             <div>
               <p className="mb-1.5 text-xs font-medium text-slate-600">Fundo</p>
               <div className="grid grid-cols-3 gap-1.5">
@@ -576,7 +668,6 @@ function CreativeBoardPage() {
               </div>
             </div>
 
-            {/* Border */}
             <div>
               <p className="mb-1.5 text-xs font-medium text-slate-600">
                 Margem decorativa
@@ -597,7 +688,6 @@ function CreativeBoardPage() {
                   </button>
                 ))}
               </div>
-
               {borderPreset !== "none" && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -624,7 +714,6 @@ function CreativeBoardPage() {
             </div>
           </SectionBox>
 
-          {/* Text editor */}
           {sel && (
             <SectionBox title="Editar texto">
               <textarea
@@ -774,7 +863,6 @@ function CreativeBoardPage() {
             </SectionBox>
           )}
 
-          {/* Shape editor */}
           {selShape && (
             <SectionBox title="Editar forma">
               <div className="grid grid-cols-2 gap-2">
@@ -831,7 +919,118 @@ function CreativeBoardPage() {
             </SectionBox>
           )}
 
-          {/* Actions */}
+          {selMath && (
+            <SectionBox title="✦ Fórmula Matemática">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Código LaTeX
+                </label>
+                <textarea
+                  className={`${fieldCls} min-h-[72px] resize-y font-mono text-xs`}
+                  value={selMath.latex}
+                  onChange={(e) =>
+                    updateItem(selMath.id, { latex: e.target.value })
+                  }
+                  placeholder="\frac{a}{b}"
+                  spellCheck={false}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <ToggleButton
+                  active={selMath.displayMode}
+                  onClick={() =>
+                    updateItem(selMath.id, {
+                      displayMode: !selMath.displayMode,
+                    })
+                  }
+                  title="Modo display (centralizado, maior)"
+                >
+                  Display
+                </ToggleButton>
+                <span className="text-xs text-slate-500">
+                  {selMath.displayMode
+                    ? "Centralizado (ideal para provas)"
+                    : "Inline (dentro de texto)"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-slate-600">
+                    Cor
+                  </label>
+                  <input
+                    type="color"
+                    className="h-9 w-full cursor-pointer rounded-md border border-slate-300 bg-white p-1"
+                    value={selMath.color}
+                    onChange={(e) =>
+                      updateItem(selMath.id, { color: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-slate-600">
+                    Tamanho
+                  </label>
+                  <input
+                    type="number"
+                    min={12}
+                    max={80}
+                    className={fieldCls}
+                    value={selMath.fontSize}
+                    onChange={(e) =>
+                      updateItem(selMath.id, {
+                        fontSize: Number(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-slate-600">
+                  Inserir template
+                </p>
+
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {MATH_TEMPLATES.map((g) => (
+                    <button
+                      key={g.category}
+                      type="button"
+                      onClick={() => setMathTab(g.category)}
+                      className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
+                        mathTab === g.category
+                          ? "bg-indigo-600 text-white"
+                          : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {g.category}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-1">
+                  {activeMathCategory?.items.map((t) => (
+                    <button
+                      key={t.label}
+                      type="button"
+                      onClick={() => updateItem(selMath.id, { latex: t.code })}
+                      className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-left text-[11px] font-medium text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 transition-colors"
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="mt-2 text-[10px] text-slate-400">
+                  Clique para substituir • edite o LaTeX manualmente para
+                  personalizar
+                </p>
+              </div>
+            </SectionBox>
+          )}
+
           <div className="mt-4 flex gap-2">
             <button
               onClick={handlePrint}
@@ -848,14 +1047,10 @@ function CreativeBoardPage() {
           </div>
         </aside>
 
-        {/* ── BOARD ── */}
         <main className="flex justify-center print:block overflow-x-auto">
           <section
             className="print-sheet w-[210mm] min-h-[297mm] bg-white shadow-md print:w-full print:min-h-0 print:shadow-none"
-            style={{
-              padding: borderPreset !== "none" ? `${borderWidth + 8}px` : "8mm",
-              ...borderStyle,
-            }}
+            style={{ padding: sheetPadding, ...borderStyle }}
           >
             <SheetHeader
               header={header}
@@ -875,27 +1070,32 @@ function CreativeBoardPage() {
             >
               {items.map((item) => {
                 const isSelected = item.id === selectedId;
+                const isShape = item.type === "shape";
+                const isMath = item.type === "math";
+
                 return (
                   <div
                     key={item.id}
-                    className={`absolute cursor-move select-none ${
-                      item.type !== "shape"
-                        ? "overflow-hidden rounded border"
+                    className={`absolute cursor-move select-none print:rounded-none print:border-0 print:bg-transparent print:shadow-none ${
+                      !isShape && !isMath
+                        ? "overflow-hidden rounded border bg-white"
                         : ""
                     } ${
-                      isSelected && item.type !== "shape"
+                      !isShape && !isMath && isSelected
                         ? "border-slate-700 shadow-md"
-                        : item.type !== "shape"
-                          ? "border-slate-300"
-                          : ""
-                    } ${item.type !== "shape" ? "bg-white" : ""} print:rounded-none print:border-0 print:bg-transparent print:shadow-none`}
+                        : ""
+                    } ${
+                      !isShape && !isMath && !isSelected
+                        ? "border-slate-300"
+                        : ""
+                    }`}
                     style={{
                       left: item.x,
                       top: item.y,
                       width: item.w,
                       height: item.h,
-                      ...(isSelected && item.type === "shape"
-                        ? { outline: "2px solid #334155", outlineOffset: "2px" }
+                      ...(isSelected && (isShape || isMath)
+                        ? { outline: "2px solid #6366f1", outlineOffset: "2px" }
                         : {}),
                     }}
                     onMouseDown={(e) => startDrag(e, item)}
@@ -932,11 +1132,12 @@ function CreativeBoardPage() {
                       </div>
                     )}
                     {item.type === "shape" && <ShapeRenderer item={item} />}
+                    {item.type === "math" && <MathRenderer item={item} />}
 
                     {isSelected && (
                       <button
                         type="button"
-                        className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white hover:bg-red-700 print:hidden"
+                        className="absolute right-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white hover:bg-red-700 print:hidden"
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();

@@ -1,9 +1,8 @@
-import { ArrowRight, ClipboardPen, Table } from "lucide-react";
+import { ArrowRight, ClipboardPen, Table, Sparkles } from "lucide-react";
 
 function HomePage({ onNavigate }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-32">
         <div className="text-center mb-20">
           <h1 className="text-5xl sm:text-6xl font-bold text-slate-900 mb-6">
@@ -18,7 +17,7 @@ function HomePage({ onNavigate }) {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-12">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
           <div
             className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:scale-105 cursor-pointer"
             onClick={() => onNavigate("attendance")}
@@ -51,10 +50,35 @@ function HomePage({ onNavigate }) {
             </h2>
             <p className="text-slate-600 mb-6">
               Uma lousa digital para criar conteúdo interativo. Ideal para
-              apresentações e atividades criativas em sala de aula.
+              apresentações e atividades criativas em sala de aula, com suporte
+              à formulas matemáticas.
             </p>
             <div className="flex items-center text-purple-600 font-semibold group-hover:gap-2 transition-all">
               Acessar
+              <ArrowRight size={20} className="ml-2" />
+            </div>
+          </div>
+
+          <div
+            className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:scale-105 cursor-pointer border-2 border-slate-200 relative overflow-hidden"
+            onClick={() => onNavigate("coming-soon")}
+          >
+            <div className="absolute top-3 right-3 bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-semibold">
+              Em Breve
+            </div>
+            <div className="mb-4 inline-block p-4 bg-slate-100 rounded-lg group-hover:bg-slate-200 transition-colors">
+              <Sparkles size={32} className="text-slate-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-3">
+              Modo Projetor
+            </h2>
+            <p className="text-slate-600 mb-6">
+              Board iterativo e gerador de gráficos interativos para
+              potencializar suas apresentações e análises de dados em sala de
+              aula.
+            </p>
+            <div className="flex items-center text-slate-600 font-semibold group-hover:gap-2 transition-all opacity-60">
+              Saiba mais
               <ArrowRight size={20} className="ml-2" />
             </div>
           </div>
