@@ -364,6 +364,7 @@ function CreativeBoardPage() {
   const [header, setHeader] = useState(INITIAL_HEADER);
   const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
   const [imageError, setImageError] = useState("");
   const [boardBg, setBoardBg] = useState("white");
   const [borderPreset, setBorderPreset] = useState("none");
@@ -477,6 +478,7 @@ function CreativeBoardPage() {
   };
 
   const startDrag = (e, item) => {
+    if (editingId === item.id) return;
     e.preventDefault();
     setSelectedId(item.id);
     const rect = boardRef.current?.getBoundingClientRect();
@@ -716,13 +718,9 @@ function CreativeBoardPage() {
 
           {sel && (
             <SectionBox title="Editar texto">
-              <textarea
-                className={`${fieldCls} min-h-[80px] resize-y`}
-                value={sel.content}
-                onChange={(e) =>
-                  updateItem(sel.id, { content: e.target.value })
-                }
-              />
+              <p className="text-xs text-slate-500 italic">
+                💡 Clique duplo no texto para editar diretamente na folha.
+              </p>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex flex-col gap-1">
@@ -1066,7 +1064,7 @@ function CreativeBoardPage() {
                 borderRadius: borderPreset === "none" ? "8px" : "0",
                 border: borderPreset === "none" ? "2px dashed #e2e8f0" : "none",
               }}
-              onMouseDown={() => setSelectedId(null)}
+              onMouseDown={() => { setSelectedId(null); setEditingId(null); }}
             >
               {items.map((item) => {
                 const isSelected = item.id === selectedId;
@@ -1076,7 +1074,9 @@ function CreativeBoardPage() {
                 return (
                   <div
                     key={item.id}
-                    className={`absolute cursor-move select-none print:rounded-none print:border-0 print:bg-transparent print:shadow-none ${
+                    className={`absolute select-none print:rounded-none print:border-0 print:bg-transparent print:shadow-none ${
+                      editingId === item.id ? "cursor-text" : "cursor-move"
+                    } ${
                       !isShape && !isMath
                         ? "overflow-hidden rounded border bg-white"
                         : ""
@@ -1103,6 +1103,13 @@ function CreativeBoardPage() {
                       e.stopPropagation();
                       setSelectedId(item.id);
                     }}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      if (item.type === "text") {
+                        setSelectedId(item.id);
+                        setEditingId(item.id);
+                      }
+                    }}
                   >
                     {item.type === "image" && (
                       <img
@@ -1112,25 +1119,45 @@ function CreativeBoardPage() {
                         draggable={false}
                       />
                     )}
-                    {item.type === "text" && (
-                      <div
-                        className="h-full w-full whitespace-pre-wrap p-2"
-                        style={{
-                          fontSize: item.fontSize,
-                          color: item.color,
-                          fontWeight: item.fontWeight,
-                          fontStyle: item.fontStyle,
-                          textDecoration: item.textDecoration,
-                          textAlign: item.textAlign,
-                          fontFamily: item.fontFamily,
-                          lineHeight: item.lineHeight,
-                          letterSpacing: `${item.letterSpacing}px`,
-                          textIndent: `${item.textIndent}px`,
-                        }}
-                      >
-                        {item.content}
-                      </div>
-                    )}
+                    {item.type === "text" && (() => {
+                      const textStyle = {
+                        fontSize: item.fontSize,
+                        color: item.color,
+                        fontWeight: item.fontWeight,
+                        fontStyle: item.fontStyle,
+                        textDecoration: item.textDecoration,
+                        textAlign: item.textAlign,
+                        fontFamily: item.fontFamily,
+                        lineHeight: item.lineHeight,
+                        letterSpacing: `${item.letterSpacing}px`,
+                        textIndent: `${item.textIndent}px`,
+                      };
+                      return editingId === item.id ? (
+                        <textarea
+                          autoFocus
+                          className="h-full w-full resize-none bg-transparent p-2 outline-none border-0 cursor-text print:hidden"
+                          style={textStyle}
+                          value={item.content}
+                          onChange={(e) =>
+                            updateItem(item.id, { content: e.target.value })
+                          }
+                          onBlur={() => setEditingId(null)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") setEditingId(null);
+                            e.stopPropagation();
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <div
+                          className="h-full w-full whitespace-pre-wrap p-2"
+                          style={textStyle}
+                        >
+                          {item.content}
+                        </div>
+                      );
+                    })()}
                     {item.type === "shape" && <ShapeRenderer item={item} />}
                     {item.type === "math" && <MathRenderer item={item} />}
 
