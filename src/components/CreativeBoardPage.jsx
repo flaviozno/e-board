@@ -6,13 +6,6 @@ import {
   Trash2,
   Printer,
   Eraser,
-  Bold,
-  Italic,
-  Underline,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
   LayoutTemplate,
   School,
   Square,
@@ -25,6 +18,22 @@ import {
 } from "lucide-react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import { CKEditor } from "@ckeditor/ckeditor5-react";
+import {
+  ClassicEditor,
+  Alignment,
+  Bold,
+  Essentials,
+  FontColor,
+  FontFamily,
+  FontSize,
+  Italic,
+  List,
+  Paragraph,
+  Underline,
+} from "ckeditor5";
+import "ckeditor5/ckeditor5.css";
+import DOMPurify from "dompurify";
 import SheetHeader from "./SheetHeader";
 import HeaderConfigPanel from "./HeaderConfigPanel";
 
@@ -716,115 +725,79 @@ function CreativeBoardPage() {
 
           {sel && (
             <SectionBox title="Editar texto">
-              <textarea
-                className={`${fieldCls} min-h-[80px] resize-y`}
-                value={sel.content}
-                onChange={(e) =>
-                  updateItem(sel.id, { content: e.target.value })
-                }
-              />
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-slate-600">
-                    Fonte
-                  </label>
-                  <select
-                    className={fieldCls}
-                    value={sel.fontFamily}
-                    onChange={(e) =>
-                      updateItem(sel.id, { fontFamily: e.target.value })
-                    }
-                  >
-                    {FONT_FAMILIES.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-slate-600">
-                    Cor
-                  </label>
-                  <input
-                    type="color"
-                    className="h-9 w-full cursor-pointer rounded-md border border-slate-300 bg-white p-1"
-                    value={sel.color}
-                    onChange={(e) =>
-                      updateItem(sel.id, { color: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5">
-                <ToggleButton
-                  active={sel.fontWeight === "700"}
-                  title="Bold"
-                  onClick={() =>
+              <div className="ck-editor-wrapper">
+                <CKEditor
+                  key={sel.id}
+                  editor={ClassicEditor}
+                  config={{
+                    licenseKey: "GPL",
+                    plugins: [
+                      Alignment,
+                      Bold,
+                      Essentials,
+                      FontColor,
+                      FontFamily,
+                      FontSize,
+                      Italic,
+                      List,
+                      Paragraph,
+                      Underline,
+                    ],
+                    toolbar: {
+                      items: [
+                        "bold",
+                        "italic",
+                        "underline",
+                        "|",
+                        "alignment",
+                        "|",
+                        "fontFamily",
+                        "fontSize",
+                        "fontColor",
+                        "|",
+                        "bulletedList",
+                        "numberedList",
+                      ],
+                    },
+                    fontFamily: {
+                      options: [
+                        "Arial",
+                        "Verdana",
+                        "Georgia",
+                        "Times New Roman",
+                        "Trebuchet MS",
+                        "Comic Sans MS",
+                      ],
+                      supportAllValues: false,
+                    },
+                    fontSize: {
+                      options: [
+                        "10px",
+                        "12px",
+                        "14px",
+                        "16px",
+                        "18px",
+                        "20px",
+                        "24px",
+                        "28px",
+                        "32px",
+                        "36px",
+                        "48px",
+                        "72px",
+                      ],
+                      supportAllValues: true,
+                    },
+                  }}
+                  data={sel.content}
+                  onChange={(_event, editor) => {
                     updateItem(sel.id, {
-                      fontWeight: sel.fontWeight === "700" ? "400" : "700",
-                    })
-                  }
-                >
-                  <Bold size={13} />
-                </ToggleButton>
-                <ToggleButton
-                  active={sel.fontStyle === "italic"}
-                  title="Italic"
-                  onClick={() =>
-                    updateItem(sel.id, {
-                      fontStyle:
-                        sel.fontStyle === "italic" ? "normal" : "italic",
-                    })
-                  }
-                >
-                  <Italic size={13} />
-                </ToggleButton>
-                <ToggleButton
-                  active={sel.textDecoration === "underline"}
-                  title="Underline"
-                  onClick={() =>
-                    updateItem(sel.id, {
-                      textDecoration:
-                        sel.textDecoration === "underline"
-                          ? "none"
-                          : "underline",
-                    })
-                  }
-                >
-                  <Underline size={13} />
-                </ToggleButton>
-                <div className="ml-1 flex gap-1">
-                  {[
-                    { align: "left", Icon: AlignLeft },
-                    { align: "center", Icon: AlignCenter },
-                    { align: "right", Icon: AlignRight },
-                    { align: "justify", Icon: AlignJustify },
-                  ].map(({ align, Icon }) => (
-                    <ToggleButton
-                      key={align}
-                      active={sel.textAlign === align}
-                      onClick={() => updateItem(sel.id, { textAlign: align })}
-                    >
-                      <Icon size={13} />
-                    </ToggleButton>
-                  ))}
-                </div>
+                      content: DOMPurify.sanitize(editor.getData()),
+                    });
+                  }}
+                />
               </div>
 
               <div className="space-y-2">
-                <SliderRow
-                  label="Tamanho"
-                  min={12}
-                  max={72}
-                  value={sel.fontSize}
-                  onChange={(e) =>
-                    updateItem(sel.id, { fontSize: Number(e.target.value) })
-                  }
-                  display={`${sel.fontSize}px`}
-                />
                 <SliderRow
                   label="Linha"
                   min={1}
@@ -1114,22 +1087,16 @@ function CreativeBoardPage() {
                     )}
                     {item.type === "text" && (
                       <div
-                        className="h-full w-full whitespace-pre-wrap p-2"
+                        className="ck-content h-full w-full p-2"
                         style={{
-                          fontSize: item.fontSize,
-                          color: item.color,
-                          fontWeight: item.fontWeight,
-                          fontStyle: item.fontStyle,
-                          textDecoration: item.textDecoration,
-                          textAlign: item.textAlign,
-                          fontFamily: item.fontFamily,
                           lineHeight: item.lineHeight,
                           letterSpacing: `${item.letterSpacing}px`,
                           textIndent: `${item.textIndent}px`,
                         }}
-                      >
-                        {item.content}
-                      </div>
+                        dangerouslySetInnerHTML={{
+                          __html: item.content,
+                        }}
+                      />
                     )}
                     {item.type === "shape" && <ShapeRenderer item={item} />}
                     {item.type === "math" && <MathRenderer item={item} />}
